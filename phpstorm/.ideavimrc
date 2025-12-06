@@ -1,0 +1,30 @@
+let mapleader=" "
+
+""" Options --------------------------------
+set nu
+set relativenumber
+set so=5
+set clipboard+=unnamed
+set showmode
+set showcmd
+set highlightedyank
+set nerdtree
+""" Change surround for example: cs"', change from " to '
+set surround
+set ignorecase
+set smartcase
+set incsearch
+set hlsearch
+
+
+""" Mappings --------------------------------
+map <leader>ss <Action>(FileStructurePop)
+map <leader>ff <action>(GotoFile)
+map <leader>e :NERDTreeToggle<CR>
+map <leader>fr <action>(RecentFiles)
+" map <leader>e <Action>(ActivateProjectToolWindow)
+" map <leader>gg <Action>(GotoDeclaration)
+
+nmap <leader>gd <Action>(GotoDeclaration)
+nnoremap L :tabnext<CR>
+nnoremap H :tabprev<CR>
