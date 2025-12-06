@@ -103,15 +103,15 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-
 # source ~/.zsh/catppuccin_latte-zsh-syntax-highlighting.zsh
 source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 export PATH="$PATH:$HOME/.composer/vendor/bin"
-
-
 export PATH=$HOME/bin:~/.config/phpmon/bin:$PATH
 
+# alias & functions
+source $HOME/.config/sh/alias.sh
+source $HOME/.config/sh/functions.sh
 
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
