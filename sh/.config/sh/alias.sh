@@ -12,3 +12,4 @@ alias wip="git add . && git commit -m 'Work in progress'"
 
 # Dev & Workflow  
 alias ealias="phpstorm $HOME/.config/sh"
+alias nope="git reset --hard && git clean -f -d && git checkout HEAD"
