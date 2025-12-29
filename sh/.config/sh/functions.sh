@@ -42,3 +42,39 @@ workspace() {
     fi
     sh $workspace
 }
+
+# Create an worktree from within active worktree directory
+gw() {
+    if [[ -z $1 ]]; then
+        echo "Usage: gw [branch name]"
+        exit 1
+    fi
+
+    local branch=$1
+    local base="$(basename "$PWD")"
+    local path="../${base}--${branch}"
+
+    /usr/bin/git worktree add -b "$branch" "$path"
+    cd "$path"
+}
+
+# Remove worktree and branch from within active worktree directory
+gwd() {
+    if gum confirm "Remove worktree and branch?"; then
+        local cwd base branch root
+
+        cwd="$(pwd)"
+        worktree="$(basename "$cwd")"
+
+        # split on first --
+        root="${worktree%%--*}"
+        branch="${worktree#*--}"
+
+        # Protect against accidentially nuking a non-worktree directory
+        if [[ $root != $worktree ]]; then
+            cd "../$root"
+            /usr/bin/git worktree remove "$worktree" --force
+            /usr/bin/git branch -D "$branch"
+        fi
+    fi
+}
