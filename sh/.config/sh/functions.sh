@@ -44,7 +44,7 @@ workspace() {
 }
 
 # Create an worktree from within active worktree directory
-gw() {
+ga() {
     if [[ -z $1 ]]; then
         echo "Usage: gw [branch name]"
         exit 1
@@ -59,7 +59,7 @@ gw() {
 }
 
 # Remove worktree and branch from within active worktree directory
-gwd() {
+gd() {
     if gum confirm "Remove worktree and branch?"; then
         local cwd base branch root
 

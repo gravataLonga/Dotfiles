@@ -7,8 +7,9 @@ alias pstop="./vendor/bin/phpunit --stop-on-defect"
 # Folders
 alias Sites="cd $HOME/Sites"
 
-# Artisan
+# PHP Aliases
 alias ar="php artisan"
+alias c="composer"
 
 # Git
 alias wip="git add . && git commit -m 'Work in progress'"
