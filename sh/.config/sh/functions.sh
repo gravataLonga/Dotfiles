@@ -1,3 +1,20 @@
+# PHPUnit
+p() {
+    if [[ -f artisan ]]; then
+        php artisan test
+    else
+        ./vendor/bin/phpunit
+    fi
+}
+
+pf() {
+    if [[ -z $1 ]]; then
+        echo "Usage: pf [method|class|file]"
+        exit 1
+    fi
+    ./vendor/bin/phpunit --filter $1
+}
+
 nd() {
     mkdir -p "$1" && cd -P -- "$1"
 }

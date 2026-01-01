@@ -1,8 +1,3 @@
-# PHPUnit
-alias p="./vendor/bin/phpunit"
-alias dep="vendor/bin/dep"
-alias pf="./vendor/bin/phpunit --filter"
-alias pstop="./vendor/bin/phpunit --stop-on-defect"
 
 # Folders
 alias Sites="cd $HOME/Sites"
