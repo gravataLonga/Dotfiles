@@ -12,3 +12,7 @@ alias nope="git reset --hard && git clean -f -d && git checkout HEAD"
 
 # Dev & Workflow  
 alias ealias="phpstorm $HOME/.config/sh"
+
+# Tailscake
+alias tailscale="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+

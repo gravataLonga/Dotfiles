@@ -7,6 +7,14 @@ p() {
     fi
 }
 
+pt() {
+    if ! [[ -f "./vendor/bin/phpunit" ]]; then
+        echo "phpunit not found. Ensure run composer install and require phpunit in your project."
+        exit 1;
+    fi
+    ./vendor/bin/phpunit
+}
+
 pf() {
     if [[ -z $1 ]]; then
         echo "Usage: pf [method|class|file]"
