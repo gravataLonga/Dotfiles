@@ -103,3 +103,6 @@ gd() {
         fi
     fi
 }
+
+cl() { IS_SANDBOX=1 claude --continue --dangerously-skip-permissions "$@"; }
+
