@@ -83,15 +83,15 @@ ga() {
     cd "$path"
 
     if [[ -f composer.json ]]; then
-        composer install
+        /usr/local/bin/composer install
     fi
 
     if [[ -f .env.example ]]; then
-        cp .env.example .env
+        /bin/cp .env.example .env
     fi
 
     if [[ -f artisan ]]; then
-        php artisan key:generate
+        /opt/homebrew/bin/php artisan key:generate
     fi
 }
 
