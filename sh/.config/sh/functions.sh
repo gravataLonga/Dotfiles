@@ -81,6 +81,18 @@ ga() {
 
     /usr/bin/git worktree add -b "$branch" "$path"
     cd "$path"
+
+    if [[ -f composer.json ]]; then
+        composer install
+    fi
+
+    if [[ -f .env.example ]]; then
+        cp .env.example .env
+    fi
+
+    if [[ -f artisan ]]; then
+        php artisan key:generate
+    fi
 }
 
 # Remove worktree and branch from within active worktree directory
