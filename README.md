@@ -11,6 +11,42 @@ stow -R -v --no-folding */
 ```
 > Note: With -n it will simulate without real change. `--no-folding` will link files a not folder, for me this is importante.
 
+# Package: zsh
+
+The `.zshrc` here assumes three things exist on the machine. None of them live in
+this repo, so a fresh machine gets a colourless prompt and errors on every login
+until you install them:
+
+```shell
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+brew install fzf
+git clone https://github.com/JannoTjarks/catppuccin-zsh.git /tmp/catppuccin-zsh
+mkdir -p ~/.oh-my-zsh/custom/themes
+cp -R /tmp/catppuccin-zsh/catppuccin.zsh-theme \
+      /tmp/catppuccin-zsh/catppuccin-flavors ~/.oh-my-zsh/custom/themes/
+```
+
+Symptoms when each is missing:
+
+| Missing | Error on login |
+| --- | --- |
+| catppuccin theme | `[oh-my-zsh] theme 'catppuccin' not found` |
+| fzf | `.zshrc:NNN: command not found: fzf` |
+
+Two details that bite:
+
+- The theme keeps its **flavors folder next to the theme file** — it does
+  `source ${0:A:h}/catppuccin-flavors/...`, so copying only the `.zsh-theme`
+  gives you a theme that loads and then fails on colours. Install into
+  `custom/themes`, not `themes`, so an oh-my-zsh update doesn't wipe it.
+- `source <(fzf --zsh)` needs **fzf >= 0.48** — the `--zsh` flag doesn't exist
+  before that, and older distro packages still ship the standalone
+  `key-bindings.zsh` / `completion.zsh` files instead.
+
+Machine-specific aliases go in `~/.config/sh/local.sh`, which `sh/.config/sh/alias.sh`
+sources if present. It is deliberately not in this repo — that's the escape hatch
+for things that shouldn't follow you to another machine.
+
 # Package: claude
 
 Claude Code skills. On any machine, one line:
