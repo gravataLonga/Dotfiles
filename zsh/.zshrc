@@ -131,7 +131,3 @@ source $HOME/.config/sh/functions.sh
 export PATH=$HOME/bin:~/.config/phpmon/bin:$PATH
 
 export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
-
-# Syntax highlighting (deve ficar no fim do .zshrc)
-[ -f $HOME/.zsh/catppuccin_latte-zsh-syntax-highlighting.zsh ] && source $HOME/.zsh/catppuccin_latte-zsh-syntax-highlighting.zsh
-[ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
