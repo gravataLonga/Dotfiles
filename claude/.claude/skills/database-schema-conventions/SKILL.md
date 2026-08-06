@@ -1,7 +1,6 @@
 ---
 name: database-schema-conventions
 description: Locked schema rules for designing database tables and writing Laravel migrations — surrogate PKs, unsignedInteger references with no FK constraints, no JSON for queryable data, nullable datetimes instead of booleans, lookup tables instead of enums, mandatory timestamps with audit-trio column ordering, soft deletes, and the immutable-history carve-out. Use whenever creating or altering a table, writing or reviewing a migration, adding a column, designing a data model, or deciding how to store a status/flag/vocabulary/state. Also trigger on "new table", "add a column", "migration", "should this be an enum/boolean/JSON column", "schema review".
-disable-model-invocation: true
 ---
 
 # Database Schema Conventions
