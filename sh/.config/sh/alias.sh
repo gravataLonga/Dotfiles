@@ -25,11 +25,11 @@ alias php84="/opt/homebrew/Cellar/php@8.4/8.4.20/bin/php"
 alias wip="git add . && git commit -m 'Work in progress'"
 alias nope="git reset --hard && git clean -f -d && git checkout HEAD"
 
-# SSH
-alias connect_ccsdev="ssh jfontes@ccsdev -L 3307:127.0.0.1:3306 -N &"
-
 # Dev & Workflow
 alias ealias="phpstorm $HOME/.config/sh"
 
 # Tailscake
 alias tailscale="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+
+# Específico desta máquina, fora do git
+[ -f $HOME/.config/sh/local.sh ] && source $HOME/.config/sh/local.sh
