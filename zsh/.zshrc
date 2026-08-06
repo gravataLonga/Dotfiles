@@ -77,7 +77,7 @@ CATPPUCCIN_SHOW_TIME=true  # Optional! If set to true, this will add the current
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git)
+plugins=()
 
 source $ZSH/oh-my-zsh.sh
 
