@@ -1,7 +1,7 @@
 ---
-name: my-preference-frontend
-description: Preference when I'm dealing with frontend  
----  
+name: my-preference
+description: Preference when I'm dealing with frontend
+---
 
 # Javascript    
 
