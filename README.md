@@ -20,10 +20,10 @@ until you install them:
 ```shell
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 brew install fzf
-git clone https://github.com/JannoTjarks/catppuccin-zsh.git /tmp/catppuccin-zsh
-mkdir -p ~/.oh-my-zsh/custom/themes
-cp -R /tmp/catppuccin-zsh/catppuccin.zsh-theme \
-      /tmp/catppuccin-zsh/catppuccin-flavors ~/.oh-my-zsh/custom/themes/
+git clone https://github.com/JannoTjarks/catppuccin-zsh.git \
+  ~/.oh-my-zsh/custom/themes/catppuccin-zsh
+ln -s catppuccin-zsh/catppuccin.zsh-theme \
+  ~/.oh-my-zsh/custom/themes/catppuccin.zsh-theme
 ```
 
 Symptoms when each is missing:
@@ -33,15 +33,21 @@ Symptoms when each is missing:
 | catppuccin theme | `[oh-my-zsh] theme 'catppuccin' not found` |
 | fzf | `.zshrc:NNN: command not found: fzf` |
 
-Two details that bite:
+The theme is a **clone plus a symlink**, so updating it is `git pull` in
+`~/.oh-my-zsh/custom/themes/catppuccin-zsh`. It has to be that shape:
 
-- The theme keeps its **flavors folder next to the theme file** — it does
-  `source ${0:A:h}/catppuccin-flavors/...`, so copying only the `.zsh-theme`
-  gives you a theme that loads and then fails on colours. Install into
-  `custom/themes`, not `themes`, so an oh-my-zsh update doesn't wipe it.
-- `source <(fzf --zsh)` needs **fzf >= 0.48** — the `--zsh` flag doesn't exist
-  before that, and older distro packages still ship the standalone
-  `key-bindings.zsh` / `completion.zsh` files instead.
+- oh-my-zsh only looks for `$ZSH_CUSTOM/themes/<name>.zsh-theme` — one level, no
+  subfolders — so the clone alone is never found. Hence the symlink.
+- The theme loads its palette with `source ${0:A:h}/catppuccin-flavors/...`. The
+  `:A` modifier resolves symlinks, so `$0` lands in the clone and finds the
+  flavors folder next to the real file. With `:a` (no resolution) this layout
+  would break — that's the detail the whole thing rests on.
+- `custom/` is in oh-my-zsh's own `.gitignore`, so the nested clone is invisible
+  to it and an omz update won't touch or wipe the theme.
+
+And `source <(fzf --zsh)` needs **fzf >= 0.48** — the `--zsh` flag doesn't exist
+before that, and older distro packages still ship the standalone
+`key-bindings.zsh` / `completion.zsh` files instead.
 
 Machine-specific aliases go in `~/.config/sh/local.sh`, which `sh/.config/sh/alias.sh`
 sources if present. It is deliberately not in this repo — that's the escape hatch
