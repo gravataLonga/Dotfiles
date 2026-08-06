@@ -1,5 +1,9 @@
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
+export PATH=/Users/jfontes/go/bin:$PATH
+export PATH=/Users/jfontes/.local/bin:$PATH
 
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
@@ -8,7 +12,10 @@ export ZSH="$HOME/.oh-my-zsh"
 # load a random theme each time Oh My Zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="robbyrussell"
+# ZSH_THEME="fino"
+ZSH_THEME="catppuccin"
+CATPPUCCIN_FLAVOR="frappe" # Required! Options: mocha, frappe, macchiato, latte
+CATPPUCCIN_SHOW_TIME=true  # Optional! If set to true, this will add the current time to the prompt.
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -70,7 +77,7 @@ ZSH_THEME="robbyrussell"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=()
+plugins=(git)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -82,11 +89,11 @@ source $ZSH/oh-my-zsh.sh
 # export LANG=en_US.UTF-8
 
 # Preferred editor for local and remote sessions
-# if [[ -n $SSH_CONNECTION ]]; then
-#   export EDITOR='vim'
-# else
-#   export EDITOR='nvim'
-# fi
+if [[ -n $SSH_CONNECTION ]]; then
+	export EDITOR='vim'
+else
+	export EDITOR='nvim'
+fi
 
 # Compilation flags
 # export ARCHFLAGS="-arch $(uname -m)"
@@ -103,16 +110,28 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-# source ~/.zsh/catppuccin_latte-zsh-syntax-highlighting.zsh
-source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-
-export PATH="$PATH:$HOME/.composer/vendor/bin"
-export PATH=$HOME/bin:~/.config/phpmon/bin:$PATH
-
-# alias & functions
-source $HOME/.config/sh/alias.sh
-source $HOME/.config/sh/functions.sh
-export PATH="$HOME/.local/bin:$PATH"
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+export PATH=$PATH:/Users/jfontes/.gem/ruby/3.4.0/bin
+
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/Users/jfontes/.lmstudio/bin"
+# End of LM Studio CLI section
+
+# Fuzzy Finder - more information: https://junegunn.github.io/fzf/shell-integration/ 
+source <(fzf --zsh)
+
+export PATH="$PATH:$HOME/.composer/vendor/bin"
+source $HOME/.config/sh/alias.sh
+source $HOME/.config/sh/functions.sh
+
+
+export PATH=$HOME/bin:~/.config/phpmon/bin:$PATH
+
+export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
+
+# Syntax highlighting (deve ficar no fim do .zshrc)
+[ -f $HOME/.zsh/catppuccin_latte-zsh-syntax-highlighting.zsh ] && source $HOME/.zsh/catppuccin_latte-zsh-syntax-highlighting.zsh
+[ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
