@@ -40,9 +40,14 @@ ga() {
     local base="$(basename "$PWD")"
     local source_env="$PWD/.env"
 
+    # Git takes the slash in feature/list-athletes as part of the name, the
+    # filesystem takes it as a folder. Without this the worktree lands in
+    # ../base--feature/list-athletes.
+    local slug="${branch//\//-}"
+
     # Never name this one `path`: in zsh that is the array tied to $PATH, and a
     # local one leaves the function with nothing on its PATH but this folder.
-    local worktree_path="../${base}--${branch}"
+    local worktree_path="../${base}--${slug}"
 
     /usr/bin/git worktree add -b "$branch" "$worktree_path"
     cd "$worktree_path" || return 1
@@ -157,13 +162,20 @@ gd() {
 
         # split on first --
         root="${worktree%%--*}"
-        branch="${worktree#*--}"
+
+        # The folder name has the slashes of the branch replaced by dashes, so
+        # it no longer spells the branch. Only git knows the real name.
+        branch="$(/usr/bin/git rev-parse --abbrev-ref HEAD 2> /dev/null)"
 
         # Protect against accidentially nuking a non-worktree directory
         if [[ $root != $worktree ]]; then
             cd "../$root"
             /usr/bin/git worktree remove "$worktree" --force
-            /usr/bin/git branch -D "$branch"
+
+            # Detached HEAD reports itself as HEAD: there is no branch to drop.
+            if [[ -n $branch && $branch != HEAD ]]; then
+                /usr/bin/git branch -D "$branch"
+            fi
         fi
     fi
 }
