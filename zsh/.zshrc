@@ -131,3 +131,7 @@ source $HOME/.config/sh/functions.sh
 export PATH=$HOME/bin:~/.config/phpmon/bin:$PATH
 
 export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
+
+# Android SDK (command-line tools, sem Android Studio)
+export ANDROID_HOME="$(brew --prefix)/share/android-commandlinetools"
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
