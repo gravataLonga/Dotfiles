@@ -180,5 +180,41 @@ gd() {
     fi
 }
 
+# Merge the branch of the active worktree into the worktree it came from
+gm() {
+    local cwd worktree root branch target
+
+    cwd="$(pwd)"
+    worktree="$(basename "$cwd")"
+
+    # split on first --
+    root="${worktree%%--*}"
+
+    if [[ $root == $worktree ]]; then
+        echo "Not a worktree created by ga: nowhere to merge into."
+        return 1
+    fi
+
+    branch="$(/usr/bin/git rev-parse --abbrev-ref HEAD 2> /dev/null)"
+
+    if [[ -z $branch || $branch == HEAD ]]; then
+        echo "No branch checked out here."
+        return 1
+    fi
+
+    # Work left uncommitted stays behind, and the merge would quietly bring
+    # over less than what is on screen.
+    if [[ -n "$(/usr/bin/git status --porcelain)" ]]; then
+        echo "Uncommitted changes in ${worktree}: commit them first."
+        return 1
+    fi
+
+    cd "../$root" || return 1
+    target="$(/usr/bin/git rev-parse --abbrev-ref HEAD)"
+
+    echo ">>> Merging ${branch} into ${target}..."
+    /usr/bin/git merge "$branch"
+}
+
 cl() { IS_SANDBOX=1 claude --continue --dangerously-skip-permissions "$@"; }
 
