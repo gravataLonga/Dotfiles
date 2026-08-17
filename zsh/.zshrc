@@ -135,3 +135,21 @@ export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
 # Android SDK (command-line tools, sem Android Studio)
 export ANDROID_HOME="$(brew --prefix)/share/android-commandlinetools"
 export PATH="$ANDROID_HOME/platform-tools:$PATH"
+
+# Android SDK - only on machines where Android Studio is installed
+if [ -d "$HOME/Library/Android/sdk" ]; then
+	export ANDROID_HOME="$HOME/Library/Android/sdk"
+	[[ -d "$ANDROID_HOME/platform-tools" && ":$PATH:" != *":$ANDROID_HOME/platform-tools:"* ]] && export PATH="$PATH:$ANDROID_HOME/platform-tools"
+	[[ -d "$ANDROID_HOME/emulator" && ":$PATH:" != *":$ANDROID_HOME/emulator:"* ]] && export PATH="$PATH:$ANDROID_HOME/emulator"
+fi
+
+# JDK - the Android Gradle build needs one. Prefer a real JDK; fall back to the
+# one bundled with Android Studio, which is enough to build and is already there.
+if [ -z "$JAVA_HOME" ]; then
+	if /usr/libexec/java_home >/dev/null 2>&1; then
+		export JAVA_HOME="$(/usr/libexec/java_home)"
+	elif [ -d "/Applications/Android Studio.app/Contents/jbr/Contents/Home" ]; then
+		export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+	fi
+	[[ -n "$JAVA_HOME" && ":$PATH:" != *":$JAVA_HOME/bin:"* ]] && export PATH="$JAVA_HOME/bin:$PATH"
+fi
