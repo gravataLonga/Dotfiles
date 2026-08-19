@@ -74,3 +74,44 @@ Skills must be **flat**: `~/.claude/skills/<name>/SKILL.md`, filename exactly
 loads nothing). The directory name is the command you type (`commit/` ->
 `/commit`); frontmatter `name` is only a display label, so keep it equal to the
 directory name.
+
+# Package: bin
+
+Scripts in `~/.local/bin`, which `zsh/.zshrc` already puts on `PATH`.
+
+```shell
+mkdir -p ~/.local/bin && stow -R -v --no-folding bin
+```
+
+The `mkdir` matters for the same reason as in the `claude` package: without it
+stow symlinks all of `~/.local` into this repo.
+
+## mac-cleanup
+
+Reclaims disk space from developer caches and stale app versions. **Dry run by
+default** — nothing is deleted without `--apply`.
+
+```shell
+mac-cleanup              # list what would be freed
+mac-cleanup --all        # same, including the optional groups
+mac-cleanup --apply      # delete the safe group, with a confirmation
+mac-cleanup --all --apply -y
+```
+
+The safe group only touches things that regenerate themselves: npm, Go, Gradle,
+Homebrew, CocoaPods, Composer, Playwright and Electron caches, the simulator
+dyld cache, JetBrains indexes belonging to uninstalled versions, and any iOS
+simulator runtime that is not the newest. It finds the active Fusion 360 version
+through the symlink in `webdeploy/production` and removes the rest.
+
+The optional groups only run with their own flag or `--all`, because they either
+mean re-downloading something big or losing app data: `--ollama`,
+`--android-images`, `--claude-vm`, `--bambu-beta`, `--jetbrains-config`,
+`--gradle-modules`, `--sim-devices`.
+
+Three safeguards. Deletion is confined to a fixed list of prefixes
+(`SAFE_PREFIXES`). Caches belonging to a running app are skipped rather than
+pulled out from under it. And `force_rm` restores the write bit before retrying
+a failed delete — content-addressed caches like dotslash leave their
+directories read-only on purpose, which stops `rm` even though the files are
+yours and sudo is not the answer.
