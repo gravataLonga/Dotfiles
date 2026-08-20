@@ -1,71 +1,32 @@
-# PHPUnit
+# PHPUnit runner: `p` alone runs the suite, `p Name` filters, flags pass through.
+# Uses `php artisan test` when artisan exists, `vendor/bin/phpunit` otherwise.
+# Usage:
+#   p                                  run the full suite
+#   p UserTest                         filter by class/method (shorthand for --filter)
+#   p --stop-on-defect                 stop at the first failure
+#   p --filter Foo --stop-on-defect    flags combine and pass straight through
 p() {
+    if [[ -n $1 && $1 != -* ]]; then
+        set -- --filter "$1" "${@:2}"
+    fi
+
     if [[ -f artisan ]]; then
-        php artisan test
+        php artisan test "$@"
+    elif [[ -f ./vendor/bin/phpunit ]]; then
+        ./vendor/bin/phpunit "$@"
     else
-        ./vendor/bin/phpunit
+        echo "No artisan or vendor/bin/phpunit found in $(pwd)." >&2
+        return 1
     fi
-}
-
-pt() {
-    if ! [[ -f "./vendor/bin/phpunit" ]]; then
-        echo "phpunit not found. Ensure run composer install and require phpunit in your project."
-        exit 1;
-    fi
-    ./vendor/bin/phpunit
-}
-
-pf() {
-    if [[ -z $1 ]]; then
-        echo "Usage: pf [method|class|file]"
-        exit 1
-    fi
-    ./vendor/bin/phpunit --filter $1
 }
 
 nd() {
     mkdir -p "$1" && cd -P -- "$1"
 }
 
-phpstorm() {
-    open -na "PhpStorm.app" --args "$@"
-}
-
 nvimconfig() {
     cd $HOME/.config/nvim/
     nvim .
-}
-
-workspace() {
-    # if 0 parameters are passed then we pass to fzf
-    if [[ $# -eq 0 ]]; then
-        local start=$(ls "/Users/jfontes/.config/tmux-workspace" | fzf)
-        local tmuxWorkspace="/Users/jfontes/.config/tmux-workspace/$start"
-        sh $tmuxWorkspace
-        return 0
-    fi
-    # List all workspace exists
-    if [[ $1 != "" && $1 == "ls" ]]; then
-        ls -la "/Users/jfontes/.config/tmux-workspace"
-        return 0
-    fi
-    # Create a new workspace
-    if [[ $1 != "" && $1 == "create" && $2 != "" ]]; then
-        local path="/Users/jfontes/.config/tmux-workspace/$2"
-        if [[ -f $path ]]; then
-            echo "Workspace already exists!"
-            return 1
-        fi
-        /usr/bin/touch $path
-        /opt/homebrew/bin/nvim $path
-        return 0
-    fi
-    local workspace="/Users/jfontes/.config/tmux-workspace/$@"
-    if ! [ -f $workspace ]; then
-        echo "Workspace not found $workspace"
-        return 1
-    fi
-    sh $workspace
 }
 
 # Create an worktree from within active worktree directory
