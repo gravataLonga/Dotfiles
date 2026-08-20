@@ -1,0 +1,14 @@
+default partial alphanumeric_keys
+xkb_symbols "basic" {
+    include "us(basic)"
+    name[Group1] = "English (US, macOS-style dead keys)";
+
+    key <AD03> { [ e, E, dead_acute,      dead_acute      ] };  // AltGr+E
+    key <AD08> { [ i, I, dead_circumflex, dead_circumflex ] };  // AltGr+I
+    key <AB06> { [ n, N, dead_tilde,      dead_tilde      ] };  // AltGr+N
+    key <AD07> { [ u, U, dead_diaeresis,  dead_diaeresis  ] };  // AltGr+U
+    key <AB03> { [ c, C, ccedilla,        Ccedilla        ] };  // AltGr+C
+    key <TLDE> { [ grave, asciitilde, dead_grave, dead_grave ] };  // AltGr+`
+
+    include "level3(ralt_switch)"
+};
