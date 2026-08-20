@@ -15,3 +15,4 @@ source "$OMARCHY_PATH/default/bash/rc"
 
 source ~/.config/sh/alias.sh
 source ~/.config/sh/functions.sh
+export PATH="$HOME/.config/composer/vendor/bin:$PATH"
