@@ -29,8 +29,21 @@ MAX_LISTED=6
 
 OPTIONAL_GROUPS="ollama android-images claude-vm bambu-beta jetbrains-config gradle-modules sim-devices"
 
+# Some caches sit in SIP data vaults, where even root gets EPERM and no file
+# flag hints at it. Worth knowing before promising to free them.
+SIP_ENABLED=1
+csrutil status 2>/dev/null | grep -qi 'disabled' && SIP_ENABLED=0
+
 # Deletion is confined to these prefixes. Any path outside them is refused.
 SAFE_PREFIXES="$HOME/Library $HOME/.ollama $HOME/.npm $HOME/.gradle $HOME/.Trash /Library/Developer/CoreSimulator"
+
+# The per-user temp container (/var/folders/xx/yyyy) holds the app code-signing
+# clones. Resolved here so the guard allows that one directory, not all of /var.
+USER_TMP_CONTAINER=""
+if user_tmp=$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null) && [ -d "$user_tmp" ]; then
+    USER_TMP_CONTAINER=$(dirname "$user_tmp")
+    SAFE_PREFIXES="$SAFE_PREFIXES $USER_TMP_CONTAINER/X"
+fi
 
 if [ -t 1 ]; then
     C_RESET=$'\033[0m'; C_BOLD=$'\033[1m'; C_DIM=$'\033[2m'
@@ -112,10 +125,19 @@ force_rm() {
         rm -rf -- "$target" 2>/dev/null && return 0
     fi
 
+    # Authenticate first, so a failed password reports itself instead of
+    # surfacing later as an unexplained "could not delete".
+    if ! sudo -v; then
+        warn "sudo authentication failed, kept: $target"
+        return 1
+    fi
+
     sudo chmod -R u+w -- "$target" 2>/dev/null
-    sudo rm -rf -- "$target" 2>/dev/null && return 0
+    local err
+    err=$(sudo rm -rf -- "$target" 2>&1) && return 0
 
     warn "could not delete: $target"
+    [ -n "$err" ] && note "$err"
     return 1
 }
 
@@ -203,8 +225,21 @@ task_fusion() {
     done
 
     if [ -z "$keep" ]; then
-        warn "Fusion 360: active version symlink not found, skipped to be safe"
-        return 0
+        # Newer layouts drop the .app symlink. Fall back to keeping the most
+        # recent version, and only when there is more than one to choose from.
+        local count newest
+        count=$(find "$dir" -mindepth 1 -maxdepth 1 -type d ! -name '*.app' 2>/dev/null \
+            | wc -l | tr -d ' ')
+        [ "$count" -gt 1 ] || return 0
+
+        newest=$(find "$dir" -mindepth 1 -maxdepth 1 -type d ! -name '*.app' \
+            -exec stat -f '%m %N' {} + 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+        if [ -z "$newest" ]; then
+            warn "Fusion 360: active version symlink not found, skipped to be safe"
+            return 0
+        fi
+        keep=" $(basename "$newest")"
+        note "Fusion 360: no version symlink, keeping the most recent version"
     fi
 
     local -a stale=()
@@ -259,6 +294,13 @@ task_sim_dyld_cache() {
     local dir="/Library/Developer/CoreSimulator/Caches/dyld"
     [ -d "$dir" ] || return 0
 
+    # With SIP on this is a data vault: rm returns EPERM even as root, and no
+    # restricted flag shows it. The cache goes only when its runtime does.
+    if [ "$SIP_ENABLED" -eq 1 ]; then
+        note "Simulator dyld cache: $(human "$(bytes_of "$dir")") held by SIP, goes only with its runtime"
+        return 0
+    fi
+
     local -a children=()
     local d
     for d in "$dir"/*; do
@@ -268,6 +310,26 @@ task_sim_dyld_cache() {
 
     [ ${#children[@]} -gt 0 ] || return 0
     remove_paths "Simulator dyld cache, rebuilt on the next build" "${children[@]}"
+}
+
+task_derived_data() {
+    local dir="$HOME/Library/Developer/Xcode/DerivedData"
+    [ -d "$dir" ] || return 0
+
+    if app_running "Xcode"; then
+        warn "Xcode is running, DerivedData skipped (quit Xcode and run again)"
+        return 0
+    fi
+
+    local -a children=()
+    local d
+    for d in "$dir"/*; do
+        [ -e "$d" ] || continue
+        children[${#children[@]}]="$d"
+    done
+
+    [ ${#children[@]} -gt 0 ] || return 0
+    remove_paths "Xcode DerivedData, rebuilt on the next build" "${children[@]}"
 }
 
 task_jetbrains_caches() {
@@ -364,6 +426,78 @@ task_browser_caches() {
     fi
 }
 
+# Apps get an APFS clone of their bundle in the temp container at launch, and
+# are meant to drop it on quit. Crashes leave them behind, hundreds at a time.
+#
+# A running app executes from its clone, so its clones have to stay. A global
+# lsof does not report these handles (only lsof +D on the directory does, which
+# is far too slow here), so the owning app is identified from the binary inside
+# the clone and checked by name instead.
+task_code_sign_clones() {
+    [ -n "$USER_TMP_CONTAINER" ] || return 0
+    local xdir="$USER_TMP_CONTAINER/X"
+    [ -d "$xdir" ] || return 0
+
+    local -a stale=()
+    local parent first exe app d shown=0
+
+    for parent in "$xdir"/*.code_sign_clone; do
+        [ -d "$parent" ] || continue
+
+        first=$(find "$parent" -mindepth 1 -maxdepth 1 2>/dev/null | head -1)
+        [ -n "$first" ] || continue
+
+        # Inside a clone: <App>.app.bundle/Contents/MacOS/<App>
+        exe=$(find "$first" -maxdepth 4 -path '*/Contents/MacOS/*' -type f 2>/dev/null | head -1)
+        if [ -z "$exe" ]; then
+            warn "$(basename "$parent"): no app binary found, kept to be safe"
+            continue
+        fi
+
+        app=$(basename "$exe")
+        if app_running "$app"; then
+            warn "$app is running, its clones were kept (quit it and run again)"
+            continue
+        fi
+
+        while IFS= read -r d; do
+            [ -n "$d" ] || continue
+            if ! is_safe_path "$d"; then
+                warn "refused, outside the allowed prefixes: $d"
+                continue
+            fi
+            stale[${#stale[@]}]="$d"
+        done <<EOF
+$(find "$parent" -mindepth 1 -maxdepth 1 -mmin +60 2>/dev/null)
+EOF
+    done
+
+    [ ${#stale[@]} -gt 0 ] || return 0
+
+    # These share their blocks with the app bundle, so du reports every clone at
+    # full size. Adding that to the total would be fiction: report the count and
+    # let the free-space line at the end show what actually came back.
+    printf '  %s%8s%s  %s\n' "$C_GREEN" "${#stale[@]}" "$C_RESET" \
+        "leaked app code-signing clones, recreated at launch"
+    note "in $xdir"
+    note "clones share blocks with the app bundle: the real gain is much smaller than du suggests"
+
+    for d in "${stale[@]}"; do
+        [ "$shown" -lt "$MAX_LISTED" ] || break
+        note "$d"
+        shown=$(( shown + 1 ))
+    done
+    if [ ${#stale[@]} -gt "$MAX_LISTED" ]; then
+        note "... and $(( ${#stale[@]} - MAX_LISTED )) more"
+    fi
+
+    [ "$APPLY" -eq 1 ] || return 0
+    for d in "${stale[@]}"; do
+        force_rm "$d"
+    done
+    return 0
+}
+
 task_trash() {
     local -a items=()
     local d
@@ -448,14 +582,30 @@ task_gradle_modules() {
 task_sim_devices() {
     enabled sim-devices || return 0
     command -v xcrun >/dev/null 2>&1 || return 0
+    command -v jq >/dev/null 2>&1 || return 0
 
-    local size
-    size=$(bytes_of "$HOME/Library/Developer/CoreSimulator/Devices")
-    [ "$size" -gt 0 ] || return 0
+    local devices="$HOME/Library/Developer/CoreSimulator/Devices"
+    [ -d "$devices" ] || return 0
 
-    report "Unavailable iOS simulators" 0
+    # Only the unavailable ones get deleted, so only those get measured.
+    local -a paths=()
+    local udid
+    while IFS= read -r udid; do
+        [ -n "$udid" ] || continue
+        [ -d "$devices/$udid" ] || continue
+        paths[${#paths[@]}]="$devices/$udid"
+    done <<EOF
+$(xcrun simctl list devices -j 2>/dev/null \
+    | jq -r '.devices | to_entries[] | .value[] | select(.isAvailable != true) | .udid' 2>/dev/null)
+EOF
+
+    if [ ${#paths[@]} -eq 0 ]; then
+        note "No unavailable simulators. The $(human "$(bytes_of "$devices")") in Devices is all in use by available ones."
+        return 0
+    fi
+
+    report "Unavailable iOS simulators (${#paths[@]})" "$(bytes_of "${paths[@]}")"
     note "\$ xcrun simctl delete unavailable"
-    note "Devices holds $(human "$size") in total, only unavailable ones go"
     [ "$APPLY" -eq 1 ] && xcrun simctl delete unavailable >/dev/null 2>&1
     return 0
 }
@@ -504,10 +654,12 @@ section "Caches and stale versions"
 task_fusion
 task_sim_runtimes
 task_sim_dyld_cache
+task_derived_data
 task_jetbrains_caches
 task_gradle
 task_dev_caches
 task_browser_caches
+task_code_sign_clones
 task_trash
 
 if [ -n "$ENABLED" ]; then
