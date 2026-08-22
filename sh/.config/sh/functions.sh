@@ -218,3 +218,8 @@ gm() {
 
 cl() { IS_SANDBOX=1 claude --continue --dangerously-skip-permissions "$@"; }
 
+
+# Uma pergunta, uma resposta, e o shell volta. Ao contrário do cl, não abre a
+# TUI nem retoma nada: cada invocação começa limpa, que é o que se quer para
+# perguntas soltas. Aceita stdin, portanto `cat erro.log | clp "o que falhou?"`.
+clp() { IS_SANDBOX=1 claude --print --dangerously-skip-permissions "$@"; }
