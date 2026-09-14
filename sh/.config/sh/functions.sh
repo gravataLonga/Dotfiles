@@ -216,7 +216,12 @@ gm() {
     /usr/bin/git merge "$branch"
 }
 
-cl() { IS_SANDBOX=1 claude --continue --dangerously-skip-permissions "$@"; }
+# Falls back to a fresh session when --continue points at a transcript that was
+# already cleaned up, which otherwise aborts with "No conversation found".
+cl() {
+	IS_SANDBOX=1 claude --continue --dangerously-skip-permissions "$@" \
+		|| IS_SANDBOX=1 claude --dangerously-skip-permissions "$@"
+}
 
 
 # Uma pergunta, uma resposta, e o shell volta. Ao contrário do cl, não abre a
