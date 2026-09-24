@@ -11,6 +11,8 @@
 #
 # Optional groups (only included with their flag, or with --all):
 #   --ollama           local LLM models in ~/.ollama
+#   --lmstudio         local models downloaded by LM Studio
+#   --comfyui          ComfyUI model weights (checkpoints, loras, VAEs, ...)
 #   --android-images   Android emulator system images
 #   --claude-vm        Claude Desktop VM bundle
 #   --bambu-beta       BambuStudio Beta data
@@ -27,7 +29,10 @@ TOTAL_BYTES=0
 SUDO_NEEDED=0
 MAX_LISTED=6
 
-OPTIONAL_GROUPS="ollama android-images claude-vm bambu-beta jetbrains-config gradle-modules sim-devices"
+OPTIONAL_GROUPS="ollama lmstudio comfyui android-images claude-vm bambu-beta jetbrains-config gradle-modules sim-devices"
+
+# Comfy Desktop records where each install lives and where it keeps its weights.
+COMFY_CONFIG="$HOME/Library/Application Support/Comfy Desktop"
 
 # Some caches sit in SIP data vaults, where even root gets EPERM and no file
 # flag hints at it. Worth knowing before promising to free them.
@@ -35,15 +40,32 @@ SIP_ENABLED=1
 csrutil status 2>/dev/null | grep -qi 'disabled' && SIP_ENABLED=0
 
 # Deletion is confined to these prefixes. Any path outside them is refused.
-SAFE_PREFIXES="$HOME/Library $HOME/.ollama $HOME/.npm $HOME/.gradle $HOME/.Trash /Library/Developer/CoreSimulator"
+# An array, not a string: model folders are user-chosen and may contain spaces.
+SAFE_PREFIXES=(
+    "$HOME/Library"
+    "$HOME/.ollama"
+    "$HOME/.npm"
+    "$HOME/.gradle"
+    "$HOME/.Trash"
+    "/Library/Developer/CoreSimulator"
+)
 
 # The per-user temp container (/var/folders/xx/yyyy) holds the app code-signing
 # clones. Resolved here so the guard allows that one directory, not all of /var.
 USER_TMP_CONTAINER=""
 if user_tmp=$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null) && [ -d "$user_tmp" ]; then
     USER_TMP_CONTAINER=$(dirname "$user_tmp")
-    SAFE_PREFIXES="$SAFE_PREFIXES $USER_TMP_CONTAINER/X"
+    SAFE_PREFIXES[${#SAFE_PREFIXES[@]}]="$USER_TMP_CONTAINER/X"
 fi
+
+# LM Studio stores its home where this pointer says, which is not always
+# ~/.lmstudio. Resolved here so the guard covers wherever the models actually are.
+LMSTUDIO_HOME="$HOME/.lmstudio"
+if [ -f "$HOME/.lmstudio-home-pointer" ]; then
+    lmstudio_pointer=$(tr -d '\n' < "$HOME/.lmstudio-home-pointer" 2>/dev/null)
+    [ -n "$lmstudio_pointer" ] && [ -d "$lmstudio_pointer" ] && LMSTUDIO_HOME="$lmstudio_pointer"
+fi
+SAFE_PREFIXES[${#SAFE_PREFIXES[@]}]="$LMSTUDIO_HOME"
 
 if [ -t 1 ]; then
     C_RESET=$'\033[0m'; C_BOLD=$'\033[1m'; C_DIM=$'\033[2m'
@@ -99,7 +121,7 @@ is_safe_path() {
         ''|/|"$HOME"|"$HOME"/) return 1 ;;
         *..*) return 1 ;;
     esac
-    for pre in $SAFE_PREFIXES; do
+    for pre in "${SAFE_PREFIXES[@]}"; do
         case "$p" in "$pre"/*) return 0 ;; esac
     done
     return 1
@@ -527,6 +549,133 @@ EOF
     remove_paths "Local Ollama models, re-downloadable with ollama pull" "$dir"
 }
 
+task_lmstudio() {
+    enabled lmstudio || return 0
+    local dir="$LMSTUDIO_HOME/models"
+    [ -d "$dir" ] || return 0
+
+    # The app is named Bionic since the rebrand; older installs still run as
+    # LM Studio. A loaded model would be pulled from under it, so skip either.
+    if app_running "Bionic" || app_running "LM Studio"; then
+        warn "LM Studio is running, its models were skipped (quit the app first)"
+        return 0
+    fi
+
+    # One model is a <publisher>/<repo> folder, whether GGUF file or MLX bundle.
+    local -a models=() labels=()
+    local publisher repo size total=0
+    for publisher in "$dir"/*; do
+        [ -d "$publisher" ] || continue
+        for repo in "$publisher"/*; do
+            [ -d "$repo" ] || continue
+            if ! is_safe_path "$repo"; then
+                warn "refused, outside the allowed prefixes: $repo"
+                continue
+            fi
+            size=$(bytes_of "$repo")
+            total=$(( total + size ))
+            models[${#models[@]}]="$repo"
+            labels[${#labels[@]}]=$(printf '%8s  %s/%s' "$(human "$size")" \
+                "$(basename "$publisher")" "$(basename "$repo")")
+        done
+    done
+
+    [ ${#models[@]} -gt 0 ] || return 0
+
+    report "LM Studio models (${#models[@]}), re-downloadable in the app" "$total"
+    for repo in "${labels[@]}"; do note "$repo"; done
+
+    [ "$APPLY" -eq 1 ] || return 0
+    for repo in "${models[@]}"; do
+        force_rm "$repo"
+    done
+}
+
+# Weights do not live in the ComfyUI folder by default: Comfy Desktop points
+# each install at a shared base_path, and manual installs keep their own.
+comfyui_model_roots() {
+    local f
+
+    for f in "$COMFY_CONFIG/instance-model-paths"/*.yaml; do
+        [ -f "$f" ] || continue
+        grep -E "^[[:space:]]*base_path:" "$f" 2>/dev/null \
+            | sed -E "s/^[^:]*:[[:space:]]*'?//; s/'?[[:space:]]*$//"
+    done
+
+    if [ -f "$COMFY_CONFIG/installations.json" ]; then
+        grep -o '"installPath": *"[^"]*"' "$COMFY_CONFIG/installations.json" \
+            | sed 's/.*: *"//; s/"$//; s|$|/ComfyUI/models|'
+    fi
+
+    printf '%s\n' "$HOME/ComfyUI/models"
+}
+
+task_comfyui() {
+    enabled comfyui || return 0
+
+    if app_running "Comfy Desktop"; then
+        warn "Comfy Desktop is running, its models were skipped (quit the app first)"
+        return 0
+    fi
+
+    local -a roots=()
+    local root r dup
+    while IFS= read -r root; do
+        [ -n "$root" ] || continue
+        [ -d "$root" ] || continue
+        case "$root" in
+            "$HOME"/*) ;;
+            *) warn "ComfyUI models outside the home folder, kept: $root"; continue ;;
+        esac
+
+        dup=0
+        if [ ${#roots[@]} -gt 0 ]; then
+            for r in "${roots[@]}"; do [ "$r" = "$root" ] && dup=1; done
+        fi
+        [ "$dup" -eq 0 ] || continue
+
+        roots[${#roots[@]}]="$root"
+        SAFE_PREFIXES[${#SAFE_PREFIXES[@]}]="$root"
+    done <<EOF
+$(comfyui_model_roots)
+EOF
+
+    [ ${#roots[@]} -gt 0 ] || return 0
+
+    # Only the weights go: the category folders stay, ComfyUI expects them.
+    local -a files=() labels=()
+    local size path total=0
+    for root in "${roots[@]}"; do
+        while IFS=' ' read -r size path; do
+            [ -n "$path" ] || continue
+            if ! is_safe_path "$path"; then
+                warn "refused, outside the allowed prefixes: $path"
+                continue
+            fi
+            total=$(( total + size ))
+            files[${#files[@]}]="$path"
+            # Relative to the home folder: with more than one root, a path
+            # relative to its own root does not say which install it came from.
+            labels[${#labels[@]}]=$(printf '%8s  ~/%s' "$(human "$size")" "${path#"$HOME"/}")
+        done <<EOF
+$(find "$root" -type f \( -name '*.safetensors' -o -name '*.sft' -o -name '*.ckpt' \
+    -o -name '*.pt' -o -name '*.pth' -o -name '*.bin' -o -name '*.gguf' \
+    -o -name '*.onnx' \) -exec stat -f '%z %N' {} + 2>/dev/null | sort -rn)
+EOF
+    done
+
+    [ ${#files[@]} -gt 0 ] || return 0
+
+    report "ComfyUI model weights (${#files[@]}), re-downloadable" "$total"
+    for root in "${roots[@]}"; do note "in $root"; done
+    for path in "${labels[@]}"; do note "$path"; done
+
+    [ "$APPLY" -eq 1 ] || return 0
+    for path in "${files[@]}"; do
+        force_rm "$path"
+    done
+}
+
 task_android_images() {
     enabled android-images || return 0
     remove_paths "Android emulator system images" \
@@ -623,7 +772,7 @@ while [ $# -gt 0 ]; do
         --apply) APPLY=1 ;;
         -y|--yes) ASSUME_YES=1 ;;
         --all) ENABLED="$OPTIONAL_GROUPS" ;;
-        --ollama|--android-images|--claude-vm|--bambu-beta|--jetbrains-config|--gradle-modules|--sim-devices)
+        --ollama|--lmstudio|--comfyui|--android-images|--claude-vm|--bambu-beta|--jetbrains-config|--gradle-modules|--sim-devices)
             ENABLED="$ENABLED ${1#--}" ;;
         -h|--help) usage ;;
         *) die "unknown option: $1 (see --help)" ;;
@@ -665,6 +814,8 @@ task_trash
 if [ -n "$ENABLED" ]; then
     section "Optional groups:$ENABLED"
     task_ollama
+    task_lmstudio
+    task_comfyui
     task_android_images
     task_claude_vm
     task_bambu_beta
