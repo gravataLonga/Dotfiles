@@ -53,28 +53,6 @@ Machine-specific aliases go in `~/.config/sh/local.sh`, which `sh/.config/sh/ali
 sources if present. It is deliberately not in this repo — that's the escape hatch
 for things that shouldn't follow you to another machine.
 
-# Package: claude
-
-Claude Code skills. On any machine, one line:
-
-```shell
-mkdir -p ~/.claude/skills && stow -R -v claude
-```
-
-The `mkdir` is the whole trick, so don't drop it. Stow links at the highest level
-that doesn't exist yet, so plain `stow claude` on a fresh machine (no `~/.claude`)
-symlinks `~/.claude` **itself** into this repo, and every session, history and
-cache file Claude Code writes ends up in your dotfiles. Creating the two
-directories first pins the links one level deeper — `~/.claude/skills/<name>`
--> this repo — which keeps `~/.claude` writable, lets a machine keep its own
-unshared skills, and picks up extra files inside a skill without a restow.
-
-Skills must be **flat**: `~/.claude/skills/<name>/SKILL.md`, filename exactly
-`SKILL.md`. Subfolders are silently never loaded (`skills/productivity/handoff/`
-loads nothing). The directory name is the command you type (`commit/` ->
-`/commit`); frontmatter `name` is only a display label, so keep it equal to the
-directory name.
-
 # Package: bin
 
 Scripts in `~/.local/bin`, which `zsh/.zshrc` already puts on `PATH`.
@@ -83,8 +61,8 @@ Scripts in `~/.local/bin`, which `zsh/.zshrc` already puts on `PATH`.
 mkdir -p ~/.local/bin && stow -R -v --no-folding bin
 ```
 
-The `mkdir` matters for the same reason as in the `claude` package: without it
-stow symlinks all of `~/.local` into this repo.
+The `mkdir` matters: stow links at the highest level that doesn't exist yet, so
+without it stow symlinks all of `~/.local` into this repo.
 
 ## mac-cleanup
 
